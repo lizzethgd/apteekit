@@ -1,0 +1,314 @@
+<!DOCTYPE html >
+<html lang="en">
+<head>
+    <title>Apteekit.fi</title>
+    <meta charset="utf-8">
+     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	 <link rel="icon" href="favicon.png">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet" type="text/css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+</head>
+
+<body>
+<div class="container-principal">
+    <div class="link" style="text-align:right;"> 
+ <a href="fi/index.html">Suomeksi <img src="fi.png" width="26px" height="24px" hspace="0" vspace="0" ></a></div>    
+
+    <div class="row content">
+
+      <div class="col-md-5">      
+
+                    <h1>Apteekit.fi</h1>
+                    <p style="font-size:19px;">Find the the closest pharmacy where you need!</p>
+                    <br><br>
+
+         <div class="input-group">
+               <span class="input-group-addon" style="background-color:#337AB7;color:#fff; border-color:#337AB7;" ><svg style="width:17px;height:17px;"  viewBox="0 0 520 520"  ><path d="M256,2C157.8,2,78.2,81.6,78.2,179.8C78.2,332.2,256,510,256,510s177.8-177.8,177.8-330.2C433.8,81.6,354.2,2,256,2z   M256,281.4c-56.1,0-101.6-45.5-101.6-101.6c0-56.1,45.5-101.6,101.6-101.6c56.1,0,101.6,45.5,101.6,101.6  C357.6,235.9,312.1,281.4,256,281.4z" style="fill:#fff;"></path>
+               </svg></span>
+              <input class="form-control" placeholder="Search by place, address, postcode or street" type="text" id="addressInput">
+        </div>
+		<br>
+		<p id="errorMsg" style="color:#00ff00;"></p>
+        <div class="input-group">
+            <button class="btn btn-primary" id="geolocateButton" type="text" >Your own location (Use GPS)</button>	
+         </div>
+         <br><p></p>       
+         <div class="form-horizontal">
+             <div class="input-group">
+               <span class="input-group-addon" style="background-color:#337AB7;color:#fff; border-color:#337AB7;" >Radius:</span>
+            <select class="form-control" id="radiusSelect" label="Radius">
+                <option value="1" >1 km</option>
+                <option value="2">2 km</option>    
+                <option value="3">3 km</option>
+                <option value="5"selected>5 km</option>
+                <option value="10">10 km</option>
+                <option value="15">15 km</option>
+                <option value="20">20 km</option>
+                <option value="25">25 km</option>
+            </select>
+         </div>                  
+         </div>
+         <br><p></p>        
+         <div><select class="form-control" id="locationSelect" style="width:100%;visibility:hidden"></select></div>
+        <br><p></p>   
+	  </div>
+	  <div class="col-md-7">
+            <div id="map" style="width:100%;height:495px;"></div>
+      </div>
+	</div>
+</div>
+<footer class=bs-docs-footer>
+        <div class=container>
+            <p>© Lizzeth Garcia</p>
+        </div>
+</footer>
+
+    <script>
+		var errorMsg = document.getElementById("errorMsg");
+	
+        var map;
+        var markers = [];
+        var infoWindow;
+        var locationSelect;
+		
+		var myinfoWindow; 
+	
+        var slat;
+        var slng;    
+      
+        function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: {lat: 60.165, lng: 24.928},
+              zoom: 11
+            });
+            
+            infoWindow = new google.maps.InfoWindow();
+            
+            myinfoWindow = new google.maps.InfoWindow();
+            
+            autocomplete = new google.maps.places.Autocomplete(
+                /** @type {!HTMLInputElement} */
+                (document.getElementById('addressInput')), {
+                    types: ['geocode'],
+                    componentRestrictions: {
+                        country: "FI"
+                    }
+                });
+
+autocomplete.addListener('place_changed', searchLocations);
+//addressInput =document.getElementById('addressInput').onClick= searchLocations;
+
+locationSelect = document.getElementById("locationSelect");
+            
+locationSelect.onchange = function() {
+    var markerNum = locationSelect.options[locationSelect.selectedIndex].value;
+    if (markerNum != "none") 
+    {google.maps.event.trigger(markers[markerNum], 'click');}
+};
+               
+ geolocateButton=document.getElementById('geolocateButton').onclick = geolocate;
+            
+raButton=document.getElementById('radiusSelect').onchange = sRadius;            
+          
+}
+   
+        
+ function sRadius() {
+     
+    if (slat!=null){
+	searchLocationsNear(slat, slng);
+	}else{    
+    errorMsg.innerHTML = "You have not provided an address!";    
+    } 
+}     
+
+function geolocate() {
+    errorMsg.innerHTML ="";
+    if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(showPosition, showError);
+    } else { 
+        errorMsg.innerHTML = "Geolocation is not supported by your browser";
+    }
+}
+
+function showPosition(position) {
+ var  geolocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+                    };	
+ 	searchLocationsNear(geolocation.lat, geolocation.lng);
+    
+    slat=geolocation.lat;
+    slng=geolocation.lng;
+    
+			//map.setCenter( geolocation);
+           // map.setZoom(11);
+            
+			 var image = 'mylocationbl.png';
+                var mymarker = new google.maps.Marker({
+                icon: image,
+                map: map,
+                position: geolocation//esto no mover nunca     
+                });
+			
+ google.maps.event.addListener(mymarker, 'click', function() {
+            myinfoWindow.setContent('You are here!');
+            myinfoWindow.open(map, mymarker);    
+             }); 
+						 					
+}
+
+function showError(error) {
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            errorMsg.innerHTML = "User denied the request for Geolocation"
+            break;
+        case error.POSITION_UNAVAILABLE:
+            errorMsg.innerHTML = "Location information is unavailable"
+            break;
+        case error.TIMEOUT:
+            errorMsg.innerHTML = "The request to get user location timed out"
+            break;
+        case error.UNKNOWN_ERROR:
+            errorMsg.innerHTML = "An unknown error occurred"
+            break;
+    }
+}  
+      
+
+function searchLocations() { 
+    errorMsg.innerHTML ="";  
+    
+var address = document.getElementById("addressInput").value;
+            
+var geocoder = new google.maps.Geocoder();
+
+geocoder.geocode(
+     {address: address, componentRestrictions: { country: 'FI' }},
+    function(results, status) 
+    {
+    if (status == google.maps.GeocoderStatus.OK) 
+    {
+    searchLocationsNear(results[0].geometry.location.lat(), results[0].geometry.location.lng());  
+    slat=results[0].geometry.location.lat();
+    slng=results[0].geometry.location.lng();        
+    } 
+    else
+    {errorMsg.innerHTML =address + ' not found!';}
+    });
+}
+        
+        function searchLocationsNear(lat, lng) {
+            clearLocations();
+
+            var radius = document.getElementById('radiusSelect').value;
+            var searchUrl = 'locatorsearch.php?lat=' + lat + '&lng=' + lng + '&radius=' + radius;
+            downloadUrl(searchUrl, function(data) {
+                var xml = parseXml(data);
+                var markerNodes = xml.documentElement.getElementsByTagName("marker");
+                var bounds = new google.maps.LatLngBounds();
+                for (var i = 0; i < markerNodes.length; i++) {
+                    var id = markerNodes[i].getAttribute("id");
+                    var nimi = markerNodes[i].getAttribute("nimi");
+                    var aukioloaika = markerNodes[i].getAttribute("aukioloaika")
+                    var osoite = markerNodes[i].getAttribute("osoite");
+                    var puhelin = markerNodes[i].getAttribute("puhelin");
+                    var nettisivu = markerNodes[i].getAttribute("nettisivu");
+                    var distance = parseFloat(markerNodes[i].getAttribute("distance"));
+                    var latlng = new google.maps.LatLng(
+                        parseFloat(markerNodes[i].getAttribute("lat")),
+                        parseFloat(markerNodes[i].getAttribute("lng")));
+
+                    createOption(nimi, distance, i);
+                    createMarker(latlng, nimi, aukioloaika, osoite, puhelin, nettisivu, distance);
+                    bounds.extend(latlng);
+                }
+                map.fitBounds(bounds);
+                locationSelect.style.visibility = "visible";
+                locationSelect.onchange = function() {
+                    var markerNum = locationSelect.options[locationSelect.selectedIndex].value;
+                    google.maps.event.trigger(markers[markerNum], 'click');
+                };
+            });
+        }
+
+
+        function downloadUrl(url, callback) {
+            var request = window.ActiveXObject ?
+                new ActiveXObject('Microsoft.XMLHTTP') :
+                new XMLHttpRequest;
+
+            request.onreadystatechange = function() {
+                if (request.readyState == 4) {
+                    request.onreadystatechange = doNothing;
+                    callback(request.responseText, request.status);
+                }
+            };
+
+            request.open('GET', url, true);
+            request.send(null);
+        }
+      
+        function parseXml(str) {
+            if (window.ActiveXObject) {
+                var doc = new ActiveXObject('Microsoft.XMLDOM');
+                doc.loadXML(str);
+                return doc;
+            } else if (window.DOMParser) {
+                return (new DOMParser).parseFromString(str, 'text/xml');
+            }
+        }
+
+
+       function createMarker(latlng, nimi, aukioloaika, osoite, puhelin, nettisivu, distance) {
+          var html = "<b>" + nimi + "</b> <br/>" + aukioloaika + "<br/>" + osoite + "<br/>" + puhelin + "<br/><a href='"+nettisivu+"'>" + nettisivu +"</a><br/>" + distance + " Km.";
+            var marker = new google.maps.Marker({
+                map: map,
+                position: latlng
+            });
+            
+            google.maps.event.addListener(marker, 'click', function() {
+                infoWindow.setContent(html);
+                infoWindow.open(map, marker);
+            });
+            markers.push(marker);
+        }
+
+
+        function createOption(nimi, distance, num) {
+            var option = document.createElement("option");
+            option.value = num;
+            option.innerHTML = nimi;
+            locationSelect.appendChild(option);
+        }
+
+
+        function clearLocations() {
+            infoWindow.close();
+            for (var i = 0; i < markers.length; i++) {
+                markers[i].setMap(null);
+            }
+            markers.length = 0;
+
+            locationSelect.innerHTML = "";
+            var option = document.createElement("option");
+            option.value = "none";
+            option.innerHTML = "See all results:";
+            locationSelect.appendChild(option);
+                    
+        }
+        
+function doNothing() {}
+
+</script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDBH1wWN7XEpJX6fuBfkw2HI04812JwtS0&libraries=places&callback=initMap" async defer></script>
+
+</body>
+
+</html>
